@@ -1,5 +1,6 @@
 """Serializers for snippets."""
 from rest_framework import serializers
+from django.contrib.auth.models import User
 
 from snippets.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES
 
@@ -11,6 +12,7 @@ class SnippetSerializer(serializers.Serializer):
     linenos = serializers.BooleanField(required=False)
     language = serializers.ChoiceField(choices=LANGUAGE_CHOICES, default='python')
     style = serializers.ChoiceField(choices=STYLE_CHOICES, default='friendly')
+    owner = serializers.ReadOnlyField(source='owner.username')
 
     def create(self, validated_data):
         """Create and return a new `Snippet` instance."""
@@ -25,3 +27,18 @@ class SnippetSerializer(serializers.Serializer):
         instance.style = validated_data.get('style', instance.style)
         instance.save()
         return instance
+
+    # Note: Make sure you also add 'owner', to the list of fields in the inner Meta class.
+    class Meta:
+        model = Snippet
+        fields = ["id", "title", "code", "linenos", "language", "style", "owner"]
+
+
+class UserSerializer(serializers.ModelSerializer):
+    # Since snippets is a relationship defined on the Snippet model, not the
+    # User model, we need to explicitly add it for it to get serialized
+    snippets = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "snippets"]
